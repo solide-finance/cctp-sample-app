@@ -6,8 +6,10 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "start": "react-scripts start",
+    "dev": "react-scripts start",
+    "start": "serve -s build",
     "build": "react-scripts build",
+    "postinstall": "yarn build",
     "build:stats": "yarn build --stats",
     "analyze": "webpack-bundle-analyzer build/bundle-stats.json",
     "typechain": "typechain --target=ethers-v5 --out-dir ./src/typechain ./src/abis/*.json",
@@ -38,7 +40,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.3.0",
-    "swr": "^1.3.0"
+    "swr": "^1.3.0",
+    "serve": "^14.2.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^5.16.5",
