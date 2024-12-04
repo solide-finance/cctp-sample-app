@@ -45,6 +45,11 @@ const CHAIN_SELECT_ITEMS: SelectItem[] = [
     label: CHAIN_TO_CHAIN_NAME[Chain.ARB],
     icon: CHAIN_ICONS[Chain.ARB],
   },
+  {
+    value: Chain.POLYGON,
+    label: CHAIN_TO_CHAIN_NAME[Chain.POLYGON],
+    icon: CHAIN_ICONS[Chain.POLYGON],
+  },
 ]
 
 export const DEFAULT_FORM_INPUTS: TransactionInputs = {
