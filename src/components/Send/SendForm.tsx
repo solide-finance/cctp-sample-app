@@ -50,6 +50,16 @@ const CHAIN_SELECT_ITEMS: SelectItem[] = [
     label: CHAIN_TO_CHAIN_NAME[Chain.POLYGON],
     icon: CHAIN_ICONS[Chain.POLYGON],
   },
+  {
+    value: Chain.OPTIMISM,
+    label: CHAIN_TO_CHAIN_NAME[Chain.OPTIMISM],
+    icon: CHAIN_ICONS[Chain.OPTIMISM],
+  },
+  {
+    value: Chain.BASE,
+    label: CHAIN_TO_CHAIN_NAME[Chain.BASE],
+    icon: CHAIN_ICONS[Chain.BASE],
+  },
 ]
 
 export const DEFAULT_FORM_INPUTS: TransactionInputs = {
