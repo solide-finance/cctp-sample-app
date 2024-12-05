@@ -5,15 +5,21 @@ export enum Chain {
   ETH = 'ETH',
   AVAX = 'AVAX',
   ARB = 'ARB',
+  POLYGON = 'POLYGON',
+  OPTIMISM = 'OPTIMISM',
+  BASE = 'BASE',
 }
 
 /**
  * List of all the chain/network IDs supported
  */
 export enum SupportedChainId {
-  ETH_SEPOLIA = 11155111,
-  AVAX_FUJI = 43113,
-  ARB_SEPOLIA = 421614,
+  ETH_MAINNET = 1,
+  AVAX_MAINNET = 43114,
+  ARB_MAINNET = 42161,
+  POLYGON_MAINNET = 137,
+  OPTIMISM_MAINNET = 10,
+  BASE_MAINNET = 8453,
 }
 
 /**
@@ -21,9 +27,12 @@ export enum SupportedChainId {
  * TODO: Infer from SupportedChainId
  */
 export const SupportedChainIdHex = {
-  ETH_SEPOLIA: '0xaa36a7',
-  AVAX_FUJI: '0xa869',
-  ARB_SEPOLIA: '0x66eee',
+  ETH_MAINNET: '0x1',
+  AVAX_MAINNET: '0xa86a',
+  ARB_MAINNET: '0xa4b1',
+  POLYGON_MAINNET: '0x89',
+  OPTIMISM_MAINNET: '0xa',
+  BASE_MAINNET: '0x2105',
 }
 
 interface ChainToChainIdMap {
@@ -35,9 +44,12 @@ interface ChainToChainIdMap {
  */
 
 export const CHAIN_TO_CHAIN_ID: ChainToChainIdMap = {
-  [Chain.ETH]: SupportedChainId.ETH_SEPOLIA,
-  [Chain.AVAX]: SupportedChainId.AVAX_FUJI,
-  [Chain.ARB]: SupportedChainId.ARB_SEPOLIA,
+  [Chain.ETH]: SupportedChainId.ETH_MAINNET,
+  [Chain.AVAX]: SupportedChainId.AVAX_MAINNET,
+  [Chain.ARB]: SupportedChainId.ARB_MAINNET,
+  [Chain.POLYGON]: SupportedChainId.POLYGON_MAINNET,
+  [Chain.OPTIMISM]: SupportedChainId.OPTIMISM_MAINNET,
+  [Chain.BASE]: SupportedChainId.BASE_MAINNET,
 }
 
 interface ChainToChainNameMap {
@@ -51,6 +63,9 @@ export const CHAIN_TO_CHAIN_NAME: ChainToChainNameMap = {
   ETH: 'Ethereum',
   AVAX: 'Avalanche',
   ARB: 'Arbitrum',
+  POLYGON: 'Polygon',
+  OPTIMISM: 'Optimism',
+  BASE: 'Base',
 }
 
 /**
@@ -66,7 +81,10 @@ export const ALL_SUPPORTED_CHAIN_IDS: SupportedChainId[] = Object.values(
 export enum DestinationDomain {
   ETH = 0,
   AVAX = 1,
+  OPTIMISM = 2,
   ARB = 3,
+  BASE = 6,
+  POLYGON = 7,
 }
 
 // https://eips.ethereum.org/EIPS/eip-3085
@@ -83,40 +101,88 @@ interface AddEthereumChainParameter {
   rpcUrls?: string[]
 }
 
-const ETH_SEPOLIA: AddEthereumChainParameter = {
-  chainId: SupportedChainIdHex.ETH_SEPOLIA,
-  blockExplorerUrls: ['https://sepolia.etherscan.io'],
-  chainName: 'Sepolia Test Network',
+const ETH_MAINNET: AddEthereumChainParameter = {
+  chainId: SupportedChainIdHex.ETH_MAINNET,
+  blockExplorerUrls: ['https://etherscan.io'],
+  chainName: 'Ethereum Mainnet',
   nativeCurrency: {
     name: 'Ethereum',
     symbol: 'ETH',
     decimals: 18,
   },
-  rpcUrls: ['https://sepolia.infura.io/v3/'],
+  rpcUrls: [
+    'https://eth-mainnet.g.alchemy.com/v2/-fydhMX-MTYdL17T0UbbPYMfoz3mydMa',
+  ],
 }
 
-const AVAX_FUJI: AddEthereumChainParameter = {
-  chainId: SupportedChainIdHex.AVAX_FUJI,
-  blockExplorerUrls: ['https://testnet.snowtrace.io/'],
-  chainName: 'Avalanche FUJI C-Chain',
+const AVAX_MAINNET: AddEthereumChainParameter = {
+  chainId: SupportedChainIdHex.AVAX_MAINNET,
+  blockExplorerUrls: ['https://snowtrace.io'],
+  chainName: 'Avalanche C-Chain',
   nativeCurrency: {
     name: 'Avalanche',
     symbol: 'AVAX',
     decimals: 18,
   },
-  rpcUrls: ['https://api.avax-test.network/ext/bc/C/rpc'],
+  rpcUrls: [
+    'https://avax-mainnet.g.alchemy.com/v2/-fydhMX-MTYdL17T0UbbPYMfoz3mydMa',
+  ],
 }
 
-const ARB_SEPOLIA: AddEthereumChainParameter = {
-  chainId: SupportedChainIdHex.ARB_SEPOLIA,
-  blockExplorerUrls: ['https://sepolia.arbiscan.io/'],
-  chainName: 'Arbitrum Sepolia Testnet',
+const ARB_MAINNET: AddEthereumChainParameter = {
+  chainId: SupportedChainIdHex.ARB_MAINNET,
+  blockExplorerUrls: ['https://arbiscan.io'],
+  chainName: 'Arbitrum One',
   nativeCurrency: {
     name: 'Ethereum',
     symbol: 'ETH',
     decimals: 18,
   },
-  rpcUrls: ['https://arb-sepolia.g.alchemy.com/v2/demo'],
+  rpcUrls: [
+    'https://arb-mainnet.g.alchemy.com/v2/-fydhMX-MTYdL17T0UbbPYMfoz3mydMa',
+  ],
+}
+
+const OPTIMISM_MAINNET: AddEthereumChainParameter = {
+  chainId: SupportedChainIdHex.OPTIMISM_MAINNET,
+  blockExplorerUrls: ['https://optimistic.etherscan.io'],
+  chainName: 'OP Mainnet',
+  nativeCurrency: {
+    name: 'Ethereum',
+    symbol: 'ETH',
+    decimals: 18,
+  },
+  rpcUrls: [
+    'https://opt-mainnet.g.alchemy.com/v2/-fydhMX-MTYdL17T0UbbPYMfoz3mydMa',
+  ],
+}
+
+const BASE_MAINNET: AddEthereumChainParameter = {
+  chainId: SupportedChainIdHex.BASE_MAINNET,
+  blockExplorerUrls: ['https://basescan.org'],
+  chainName: 'Base Mainnet',
+  nativeCurrency: {
+    name: 'Ethereum',
+    symbol: 'ETH',
+    decimals: 18,
+  },
+  rpcUrls: [
+    'https://base-mainnet.g.alchemy.com/v2/-fydhMX-MTYdL17T0UbbPYMfoz3mydMa',
+  ],
+}
+
+const POLYGON_MAINNET: AddEthereumChainParameter = {
+  chainId: SupportedChainIdHex.POLYGON_MAINNET,
+  blockExplorerUrls: ['https://polygonscan.com'],
+  chainName: 'Polygon PoS Mainnet',
+  nativeCurrency: {
+    name: 'POL',
+    symbol: 'POL',
+    decimals: 18,
+  },
+  rpcUrls: [
+    'https://polygon-mainnet.g.alchemy.com/v2/-fydhMX-MTYdL17T0UbbPYMfoz3mydMa',
+  ],
 }
 
 interface ChainIdToChainParameters {
@@ -124,7 +190,10 @@ interface ChainIdToChainParameters {
 }
 
 export const CHAIN_ID_HEXES_TO_PARAMETERS: ChainIdToChainParameters = {
-  [SupportedChainIdHex.ETH_SEPOLIA]: ETH_SEPOLIA,
-  [SupportedChainIdHex.AVAX_FUJI]: AVAX_FUJI,
-  [SupportedChainIdHex.ARB_SEPOLIA]: ARB_SEPOLIA,
+  [SupportedChainIdHex.ETH_MAINNET]: ETH_MAINNET,
+  [SupportedChainIdHex.AVAX_MAINNET]: AVAX_MAINNET,
+  [SupportedChainIdHex.ARB_MAINNET]: ARB_MAINNET,
+  [SupportedChainIdHex.POLYGON_MAINNET]: POLYGON_MAINNET,
+  [SupportedChainIdHex.OPTIMISM_MAINNET]: OPTIMISM_MAINNET,
+  [SupportedChainIdHex.BASE_MAINNET]: BASE_MAINNET,
 }

@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 
 import classnames from 'classnames'
 
-import logo from 'assets/logo.svg'
+import logo from 'assets/sflogo.png'
 import ConnectWallet from 'components/ConnectWallet/ConnectWallet'
 import { routes } from 'pages/Router'
 
@@ -36,7 +36,7 @@ function Nav() {
       <Link className="flex flex-row items-center" to="/">
         <img className="inline h-12" src={logo} alt="logo" />
         <span className="ml-4 text-2xl font-semibold text-white">
-          Cross-Chain Transfer Protocol
+          Solide.fi CCTP
         </span>
       </Link>
 
