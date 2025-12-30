@@ -26,7 +26,7 @@ export interface Transaction extends TransactionInputs {
   type: TransactionType
   status: TransactionStatus
   // above will be after `depositForBurn` but before `transactionReceipt`. will need to display all of these
-  messageBytes?: Bytes
+  messageBytes?: Bytes | string // Can be Bytes (EVM) or hex string (Starknet v2 API)
   messageHash?: string
   // above will be after `transactionReceipt` but before attestation
   signature?: string

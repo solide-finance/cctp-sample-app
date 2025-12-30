@@ -4,6 +4,7 @@ import BASE from 'assets/chains/BASE.svg'
 import ETH from 'assets/chains/ETH.svg'
 import OPTIMISM from 'assets/chains/OPTIMISM.svg'
 import POLYGON from 'assets/chains/POLYGON.svg'
+import STARKNET from 'assets/chains/STARKNET.svg'
 
 export const CHAIN_ICONS = {
   ETH,
@@ -12,4 +13,5 @@ export const CHAIN_ICONS = {
   POLYGON,
   OPTIMISM,
   BASE,
+  STARKNET,
 }

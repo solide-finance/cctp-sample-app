@@ -10,15 +10,24 @@ import {
   Select,
   TextField,
 } from '@mui/material'
+import { useAccount } from '@starknet-react/core'
 import { useWeb3React } from '@web3-react/core'
 import { formatUnits } from 'ethers/lib/utils'
 
 import { CHAIN_ICONS } from 'assets/chains'
 import NetworkAlert from 'components/NetworkAlert/NetworkAlert'
-import { Chain, CHAIN_TO_CHAIN_ID, CHAIN_TO_CHAIN_NAME } from 'constants/chains'
+import { STARKNET_USDC_ADDRESS } from 'constants/addresses'
+import {
+  Chain,
+  CHAIN_TO_CHAIN_ID,
+  CHAIN_TO_CHAIN_NAME,
+  isStarknetChain,
+} from 'constants/chains'
 import { DEFAULT_DECIMALS } from 'constants/tokens'
+import useStarknetTokenBalance from 'hooks/useStarknetTokenBalance'
 import useTokenBalance from 'hooks/useTokenBalance'
 import { getUSDCContractAddress } from 'utils/addresses'
+import { normalizeStarknetAddress } from 'utils/starknetAddressConversion'
 
 import type { Web3Provider } from '@ethersproject/providers'
 import type { TransactionInputs } from 'contexts/AppContext'
@@ -60,6 +69,11 @@ const CHAIN_SELECT_ITEMS: SelectItem[] = [
     label: CHAIN_TO_CHAIN_NAME[Chain.BASE],
     icon: CHAIN_ICONS[Chain.BASE],
   },
+  {
+    value: Chain.STARKNET,
+    label: CHAIN_TO_CHAIN_NAME[Chain.STARKNET],
+    icon: CHAIN_ICONS[Chain.STARKNET],
+  },
 ]
 
 export const DEFAULT_FORM_INPUTS: TransactionInputs = {
@@ -76,36 +90,102 @@ interface Props {
 }
 
 const SendForm = ({ handleNext, handleUpdateForm, formInputs }: Props) => {
+  // EVM wallet hooks
   const { account, active, chainId } = useWeb3React<Web3Provider>()
   const USDC_ADDRESS = getUSDCContractAddress(chainId)
+
+  // Starknet wallet hooks
+  const { address: starknetAddress, isConnected: starknetConnected } =
+    useAccount()
 
   const [walletUSDCBalance, setWalletUSDCBalance] = useState(0)
   const { source, target, address, amount } = formInputs
   const [isFormValid, setIsFormValid] = useState(false)
-  const balance = useTokenBalance(USDC_ADDRESS, account ?? '')
+
+  // Get balances from both chains
+  const evmBalance = useTokenBalance(USDC_ADDRESS, account ?? '')
+  const starknetBalance = useStarknetTokenBalance(STARKNET_USDC_ADDRESS)
 
   const updateFormIsValid = useCallback(() => {
+    // Determine source wallet for balance/network checks
+    const isSourceStarknet = isStarknetChain(source as Chain)
+    const isSourceWalletConnected = isSourceStarknet
+      ? Boolean(starknetConnected)
+      : Boolean(active)
+
+    // Determine destination wallet for address validation
+    const isDestinationStarknet = isStarknetChain(target as Chain)
+    const expectedDestinationAddress = isDestinationStarknet
+      ? starknetAddress
+      : account
+    const isDestinationWalletConnected = isDestinationStarknet
+      ? Boolean(starknetConnected)
+      : Boolean(active)
+
+    // Normalize addresses for comparison if dealing with Starknet
+    const normalizedAddress = isDestinationStarknet
+      ? normalizeStarknetAddress(address)
+      : address.toLowerCase()
+    const normalizedExpectedAddress = isDestinationStarknet
+      ? normalizeStarknetAddress(expectedDestinationAddress ?? '')
+      : (expectedDestinationAddress ?? '').toLowerCase()
+
+    // Check if on correct network (only for EVM source chains)
+    const isCorrectNetwork = isSourceStarknet
+      ? true
+      : CHAIN_TO_CHAIN_ID[source] === chainId
+
     const isValid =
       source !== '' &&
       target !== '' &&
       source !== target &&
       address !== '' &&
-      address === account &&
+      normalizedAddress === normalizedExpectedAddress &&
       amount !== '' &&
       !isNaN(+amount) &&
       +amount > 0 &&
       +amount <= walletUSDCBalance &&
-      CHAIN_TO_CHAIN_ID[source] === chainId
+      isSourceWalletConnected &&
+      isDestinationWalletConnected &&
+      isCorrectNetwork
+
     setIsFormValid(isValid)
-  }, [source, target, address, account, amount, walletUSDCBalance, chainId])
+  }, [
+    source,
+    target,
+    address,
+    account,
+    starknetAddress,
+    amount,
+    walletUSDCBalance,
+    chainId,
+    active,
+    starknetConnected,
+  ])
 
   useEffect(() => {
-    if (account && active) {
-      setWalletUSDCBalance(Number(formatUnits(balance, DEFAULT_DECIMALS)))
+    const isSourceStarknet = isStarknetChain(source as Chain)
+
+    if (isSourceStarknet && starknetAddress && starknetConnected) {
+      // Convert Starknet balance (bigint) to number with decimals
+      const balanceNumber =
+        Number(starknetBalance) / Math.pow(10, DEFAULT_DECIMALS)
+      setWalletUSDCBalance(balanceNumber)
+    } else if (!isSourceStarknet && account && active) {
+      // EVM balance
+      setWalletUSDCBalance(Number(formatUnits(evmBalance, DEFAULT_DECIMALS)))
     } else {
       setWalletUSDCBalance(0)
     }
-  }, [account, active, balance])
+  }, [
+    source,
+    account,
+    active,
+    evmBalance,
+    starknetAddress,
+    starknetConnected,
+    starknetBalance,
+  ])
 
   useEffect(updateFormIsValid, [updateFormIsValid])
 
@@ -122,15 +202,44 @@ const SendForm = ({ handleNext, handleUpdateForm, formInputs }: Props) => {
     </MenuItem>
   )
 
+  const isAddressError = useMemo(() => {
+    if (address === '') return false
+
+    const isDestinationStarknet = isStarknetChain(target as Chain)
+    const expectedDestinationAddress = isDestinationStarknet
+      ? starknetAddress
+      : account
+
+    // Normalize addresses for comparison
+    const normalizedAddress = isDestinationStarknet
+      ? normalizeStarknetAddress(address)
+      : address.toLowerCase()
+    const normalizedExpectedAddress = isDestinationStarknet
+      ? normalizeStarknetAddress(expectedDestinationAddress ?? '')
+      : (expectedDestinationAddress ?? '').toLowerCase()
+
+    return normalizedAddress !== normalizedExpectedAddress
+  }, [address, account, target, starknetAddress])
+
   const getAddressHelperText = useMemo(() => {
-    if (address !== '' && (!account || !active)) {
-      return 'Please connect your wallet and check your selected network'
+    const isDestinationStarknet = isStarknetChain(target as Chain)
+    const isDestinationWalletConnected = isDestinationStarknet
+      ? starknetConnected
+      : active
+
+    if (address !== '' && !isDestinationWalletConnected) {
+      return `Please connect your ${
+        isDestinationStarknet ? 'Starknet' : 'EVM'
+      } wallet for the destination chain`
     }
-    if (address !== '' && address !== account) {
-      return "Destination address doesn't match active wallet address"
+
+    if (isAddressError) {
+      return `Destination address doesn't match active ${
+        isDestinationStarknet ? 'Starknet' : 'EVM'
+      } wallet address`
     }
     return ' '
-  }, [address, account, active])
+  }, [address, active, target, starknetConnected, isAddressError])
 
   const getAmountHelperText = useMemo(() => {
     const balanceAvailable = `${walletUSDCBalance.toLocaleString()} available`
@@ -161,9 +270,12 @@ const SendForm = ({ handleNext, handleUpdateForm, formInputs }: Props) => {
   }
 
   const handleCopyFromWallet = () => {
+    const isDestinationStarknet = isStarknetChain(target as Chain)
+    const walletAddress = isDestinationStarknet ? starknetAddress : account
+
     handleUpdateForm((state) => ({
       ...state,
-      address: account ?? '',
+      address: walletAddress ?? '',
     }))
   }
 
@@ -183,6 +295,7 @@ const SendForm = ({ handleNext, handleUpdateForm, formInputs }: Props) => {
             id="source"
             label="Source"
             error={
+              !isStarknetChain(source as Chain) &&
               account !== null &&
               active &&
               CHAIN_TO_CHAIN_ID[source] !== chainId
@@ -222,7 +335,7 @@ const SendForm = ({ handleNext, handleUpdateForm, formInputs }: Props) => {
           label="Destination Address"
           variant="outlined"
           value={address}
-          error={address !== '' && address !== account}
+          error={isAddressError}
           helperText={getAddressHelperText}
           onChange={(event) =>
             handleUpdateForm((state) => ({
@@ -237,7 +350,11 @@ const SendForm = ({ handleNext, handleUpdateForm, formInputs }: Props) => {
                 <Button
                   color="secondary"
                   onClick={handleCopyFromWallet}
-                  disabled={!account || !active}
+                  disabled={
+                    isStarknetChain(target as Chain)
+                      ? !starknetConnected
+                      : !account || !active
+                  }
                 >
                   COPY FROM WALLET
                 </Button>

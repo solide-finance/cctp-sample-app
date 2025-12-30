@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { TX_HASH_KEY } from 'constants/index'
@@ -22,12 +22,6 @@ export function useQueryParam() {
     () => getTransaction(txHash),
     [getTransaction, txHash]
   )
-
-  useEffect(() => {
-    if (txHash != null && transaction == null) {
-      setSearchParams('')
-    }
-  }, [setSearchParams, txHash, transaction])
 
   return {
     txHash,

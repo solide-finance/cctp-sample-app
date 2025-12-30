@@ -8,6 +8,7 @@ export enum Chain {
   POLYGON = 'POLYGON',
   OPTIMISM = 'OPTIMISM',
   BASE = 'BASE',
+  STARKNET = 'STARKNET',
 }
 
 /**
@@ -66,6 +67,7 @@ export const CHAIN_TO_CHAIN_NAME: ChainToChainNameMap = {
   POLYGON: 'Polygon',
   OPTIMISM: 'Optimism',
   BASE: 'Base',
+  STARKNET: 'Starknet',
 }
 
 /**
@@ -85,6 +87,7 @@ export enum DestinationDomain {
   ARB = 3,
   BASE = 6,
   POLYGON = 7,
+  STARKNET = 25,
 }
 
 // https://eips.ethereum.org/EIPS/eip-3085
@@ -196,4 +199,25 @@ export const CHAIN_ID_HEXES_TO_PARAMETERS: ChainIdToChainParameters = {
   [SupportedChainIdHex.POLYGON_MAINNET]: POLYGON_MAINNET,
   [SupportedChainIdHex.OPTIMISM_MAINNET]: OPTIMISM_MAINNET,
   [SupportedChainIdHex.BASE_MAINNET]: BASE_MAINNET,
+}
+
+/**
+ * Starknet Configuration
+ */
+export const STARKNET_CHAIN_ID = '0x534e5f4d41494e' // 'SN_MAIN' in hex
+export const STARKNET_RPC_URL =
+  'https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_7/-fydhMX-MTYdL17T0UbbPYMfoz3mydMa'
+
+/**
+ * Check if a chain is EVM-based
+ */
+export const isEVMChain = (chain: Chain): boolean => {
+  return chain !== Chain.STARKNET
+}
+
+/**
+ * Check if a chain is Starknet
+ */
+export const isStarknetChain = (chain: Chain): boolean => {
+  return chain === Chain.STARKNET
 }

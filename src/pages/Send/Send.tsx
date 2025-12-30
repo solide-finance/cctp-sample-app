@@ -72,8 +72,8 @@ function Send() {
       <div className="item-center mx-auto flex max-w-4xl flex-col justify-center">
         <h1>Solide.fi USDC CCTP Bridge</h1>
         <p className="mt-8 text-center text-xl">
-          This portal allows you to bridge USDC across blockchains securely, for
-          free. Only pay for gas.
+          This portal allows you to bridge USDC across blockchains, for no fee.
+          Optional instant transfer.
         </p>
 
         <div className="m-24 flex flex-col">

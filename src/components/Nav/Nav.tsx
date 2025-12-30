@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import classnames from 'classnames'
 
 import logo from 'assets/sflogo.png'
+import ConnectStarknetWallet from 'components/ConnectWallet/ConnectStarknetWallet'
 import ConnectWallet from 'components/ConnectWallet/ConnectWallet'
 import { routes } from 'pages/Router'
 
@@ -40,7 +41,7 @@ function Nav() {
         </span>
       </Link>
 
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-2">
         {routes
           .filter((route) => route.nav)
           .map((route) => (
@@ -48,6 +49,7 @@ function Nav() {
           ))}
 
         <ConnectWallet />
+        <ConnectStarknetWallet />
       </div>
     </nav>
   )
