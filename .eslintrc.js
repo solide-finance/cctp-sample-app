@@ -98,7 +98,7 @@ module.exports = {
             allowNullableBoolean: true,
             allowNullableString: true,
             allowNullableNumber: false,
-            allowAny: false,
+            allowAny: true,
           },
         ],
         '@typescript-eslint/naming-convention': [

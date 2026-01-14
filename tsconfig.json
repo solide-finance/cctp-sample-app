@@ -16,6 +16,6 @@
     "incremental": true,
     "baseUrl": "./src"
   },
-  "include": ["react-app-env.d.ts", "**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules"]
+  "include": ["react-app-env.d.ts", "src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "starkgate-frontend-master", "starknet-source"]
 }

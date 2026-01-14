@@ -21,16 +21,14 @@ export function getAddressAbbreviation(address: string): string {
 }
 
 /**
- * Returns bytes32 from an address
+ * Returns bytes32 from an address (works for both EVM and Starknet addresses)
  * @param address the address to be convert to bytes32
  */
 export function addressToBytes32(address: string) {
-  // "0x" + 24 zeros + Rest of the address string with leading "0x" trimmed
-  return (
-    address.slice(0, 2) +
-    '000000000000000000000000' +
-    address.slice(2, address.length)
-  )
+  // Remove 0x prefix, pad to 64 hex chars (32 bytes), add 0x back
+  const cleanAddress = address.startsWith('0x') ? address.slice(2) : address
+  const paddedAddress = cleanAddress.padStart(64, '0')
+  return '0x' + paddedAddress
 }
 
 /**

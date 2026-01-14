@@ -8,21 +8,30 @@ import RedeemConfirmationDialog from 'components/Redeem/RedeemConfirmationDialog
 import RedeemForm from 'components/Redeem/RedeemForm'
 import TransactionDialog from 'components/TransactionDialog/TransactionDialog'
 import { TX_HASH_KEY } from 'constants/index'
-import { TransactionStatus, TransactionType } from 'contexts/AppContext'
+import {
+  TransactionStatus,
+  TransactionType,
+  useTransactionContext,
+} from 'contexts/AppContext'
 import { useQueryParam } from 'hooks/useQueryParam'
 import { useTransactionPolling } from 'hooks/useTransactionPolling'
+
+import type { Transaction } from 'contexts/AppContext'
 
 function Redeem() {
   const [isConfirmationDialogOpen, setIsConfirmationDialogOpen] =
     useState(false)
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false)
+  const [activeTransaction, setActiveTransaction] = useState<
+    Transaction | undefined
+  >(undefined)
   const { txHash, transaction, setSearchParams } = useQueryParam()
+  const { getTransaction } = useTransactionContext()
   const navigate = useNavigate()
 
   useEffect(() => {
     if (transaction) {
       if (transaction.type === TransactionType.SEND) {
-        // If send tx is incomplete or signature is missing, redirect to Send page
         if (
           transaction.status !== TransactionStatus.COMPLETE ||
           transaction.signature == null
@@ -42,10 +51,8 @@ function Redeem() {
           transaction.status === TransactionStatus.COMPLETE &&
           transaction.signature != null
         ) {
-          // If send tx doesn't have a nextHash, open Redeem confirmation modal
           if (transaction.nextHash == null) {
             setIsConfirmationDialogOpen(true)
-            // If send tx has a nextHash, replace with redeem tx hash
           } else {
             setSearchParams(
               { [TX_HASH_KEY]: transaction.nextHash },
@@ -53,7 +60,6 @@ function Redeem() {
             )
           }
         }
-        // If redeem tx is not complete, open Redeem transaction modal
       } else if (
         transaction.type === TransactionType.REDEEM &&
         transaction.status !== TransactionStatus.COMPLETE
@@ -63,8 +69,31 @@ function Redeem() {
     }
   }, [navigate, setSearchParams, transaction, txHash])
 
-  const handleNext = (txHash: string) => {
-    setSearchParams({ [TX_HASH_KEY]: txHash }, { replace: true })
+  const handleNext = (inputTxHash: string) => {
+    setSearchParams({ [TX_HASH_KEY]: inputTxHash }, { replace: true })
+
+    const tx = getTransaction(inputTxHash)
+
+    if (tx) {
+      setActiveTransaction(tx)
+
+      if (tx.type === TransactionType.SEND) {
+        if (
+          tx.status === TransactionStatus.COMPLETE &&
+          tx.signature != null &&
+          tx.nextHash == null
+        ) {
+          setIsConfirmationDialogOpen(true)
+        } else if (tx.nextHash != null) {
+          setSearchParams({ [TX_HASH_KEY]: tx.nextHash }, { replace: true })
+        }
+      } else if (
+        tx.type === TransactionType.REDEEM &&
+        tx.status !== TransactionStatus.COMPLETE
+      ) {
+        setIsTransactionDialogOpen(true)
+      }
+    }
   }
 
   const handleConfirmation = (txHash: string) => {
@@ -85,6 +114,9 @@ function Redeem() {
 
   const { handleRedeemTransactionPolling } =
     useTransactionPolling(handleComplete)
+
+  // Transaction to use for modals (prefer activeTransaction set by handleNext)
+  const modalTransaction = activeTransaction ?? transaction
 
   return (
     <>
@@ -124,20 +156,23 @@ function Redeem() {
         )}
       </div>
 
-      {transaction && isConfirmationDialogOpen && (
+      {modalTransaction && isConfirmationDialogOpen && (
         <RedeemConfirmationDialog
-          handleClose={() => setIsConfirmationDialogOpen(false)}
+          handleClose={() => {
+            setIsConfirmationDialogOpen(false)
+            setActiveTransaction(undefined)
+          }}
           handleNext={handleConfirmation}
           open={isConfirmationDialogOpen}
-          transaction={transaction}
+          transaction={modalTransaction}
         />
       )}
 
-      {transaction && isTransactionDialogOpen && (
+      {modalTransaction && isTransactionDialogOpen && (
         <TransactionDialog
           handleTransactionPolling={handleRedeemTransactionPolling}
           open={isTransactionDialogOpen}
-          transaction={transaction}
+          transaction={modalTransaction}
         />
       )}
     </>

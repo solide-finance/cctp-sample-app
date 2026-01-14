@@ -11,20 +11,25 @@ import {
   DialogTitle,
   IconButton,
 } from '@mui/material'
+import { useProvider } from '@starknet-react/core'
 import { useWeb3React } from '@web3-react/core'
+import { hexlify } from 'ethers/lib/utils'
 
 import NetworkAlert from 'components/NetworkAlert/NetworkAlert'
 import TransactionDetails from 'components/TransactionDetails/TransactionDetails'
-import { CHAIN_TO_CHAIN_ID } from 'constants/chains'
+import { CHAIN_TO_CHAIN_ID, isStarknetChain } from 'constants/chains'
 import {
   TransactionStatus,
   TransactionType,
   useTransactionContext,
 } from 'contexts/AppContext'
 import useMessageTransmitter from 'hooks/useMessageTransmitter'
+import useStarknetMessageTransmitter from 'hooks/useStarknetMessageTransmitter'
+import { getMessageTransmitterV2ContractAddress } from 'utils/addresses'
 
 import type { Web3Provider } from '@ethersproject/providers'
 import type { SxProps } from '@mui/material'
+import type { Chain } from 'constants/chains'
 import type { Transaction } from 'contexts/AppContext'
 
 interface Props {
@@ -42,49 +47,119 @@ const RedeemConfirmation: React.FC<Props> = ({
   transaction,
   sx = {},
 }) => {
+  // EVM hooks
   const { chainId } = useWeb3React<Web3Provider>()
+
+  // Always use v2 MessageTransmitter since we use v2 contracts and v2 attestation API for all transfers
+  const messageTransmitterAddress = getMessageTransmitterV2ContractAddress()
+  const { receiveMessage } = useMessageTransmitter(
+    chainId,
+    messageTransmitterAddress
+  )
+
+  // Starknet hooks
+  const { provider: starknetProvider } = useProvider()
+  const { receiveMessage: starknetReceiveMessage } =
+    useStarknetMessageTransmitter()
+
   const [isRedeeming, setIsRedeeming] = useState(false)
-  const { receiveMessage } = useMessageTransmitter(chainId)
   const { addTransaction, setTransaction } = useTransactionContext()
 
-  const handleRedeem = async () => {
+  /**
+   * Handle EVM mint/redeem
+   */
+  const handleEVMRedeem = async () => {
     const { messageBytes, signature } = transaction
-    if (!messageBytes || !signature) {
+    if (messageBytes == null || signature == null) {
       alert('Missing messageBytes and signature from transaction')
-    } else {
-      setIsRedeeming(true)
-      try {
-        const response = await receiveMessage(messageBytes, signature)
-        if (!response) return
+      return
+    }
 
-        const { hash } = response
+    // messageBytes can be either Bytes (from EVM source) or string (from Starknet v2 API)
+    // Both are accepted by ethers.js contract methods
+    const response = await receiveMessage(messageBytes, signature)
+    if (!response) return
 
-        // Link redeem txHash to correlated send transaction
-        const sendTx = {
-          ...transaction,
-          nextHash: hash,
-        }
-        setTransaction(transaction.hash, sendTx)
+    const { hash } = response
 
-        // Add redeem transaction to store
-        const redeemTx = {
-          source: transaction.source,
-          target: transaction.target,
-          address: transaction.address,
-          amount: transaction.amount,
-          hash,
-          type: TransactionType.REDEEM,
-          status: TransactionStatus.PENDING,
-        }
-        addTransaction(hash, redeemTx)
+    // Link redeem txHash to correlated send transaction
+    const sendTx = {
+      ...transaction,
+      nextHash: hash,
+    }
+    setTransaction(transaction.hash, sendTx)
 
-        handleNext(hash)
+    // Add redeem transaction to store
+    const redeemTx = {
+      source: transaction.source,
+      target: transaction.target,
+      address: transaction.address,
+      amount: transaction.amount,
+      hash,
+      type: TransactionType.REDEEM,
+      status: TransactionStatus.PENDING,
+    }
+    addTransaction(hash, redeemTx)
 
-        setIsRedeeming(false)
-      } catch (err) {
-        console.error(err)
-        setIsRedeeming(false)
+    handleNext(hash)
+  }
+
+  /**
+   * Handle Starknet mint/redeem
+   */
+  const handleStarknetRedeem = async () => {
+    if (starknetProvider === undefined) {
+      throw new Error('Starknet provider not available')
+    }
+
+    const { messageBytes, signature } = transaction
+    if (messageBytes == null || signature == null) {
+      alert('Missing messageBytes and signature from transaction')
+      return
+    }
+
+    // Convert Bytes to hex string for Starknet
+    const messageString =
+      typeof messageBytes === 'string' ? messageBytes : hexlify(messageBytes)
+
+    const response = await starknetReceiveMessage(messageString, signature)
+    await starknetProvider.waitForTransaction(response.transaction_hash)
+
+    // Link redeem txHash to send transaction
+    const sendTx = { ...transaction, nextHash: response.transaction_hash }
+    setTransaction(transaction.hash, sendTx)
+
+    // Add redeem transaction
+    const redeemTx = {
+      source: transaction.source,
+      target: transaction.target,
+      address: transaction.address,
+      amount: transaction.amount,
+      hash: response.transaction_hash,
+      type: TransactionType.REDEEM,
+      status: TransactionStatus.PENDING,
+    }
+    addTransaction(response.transaction_hash, redeemTx)
+
+    handleNext(response.transaction_hash)
+  }
+
+  /**
+   * Main redeem handler - routes to EVM or Starknet
+   */
+  const handleRedeem = async () => {
+    setIsRedeeming(true)
+    try {
+      // Route based on destination chain
+      if (isStarknetChain(transaction.target as Chain)) {
+        await handleStarknetRedeem()
+      } else {
+        await handleEVMRedeem()
       }
+      setIsRedeeming(false)
+    } catch (err) {
+      console.error(err)
+      setIsRedeeming(false)
     }
   }
 
@@ -115,7 +190,9 @@ const RedeemConfirmation: React.FC<Props> = ({
           size="large"
           loading={isRedeeming}
           disabled={
-            isRedeeming || CHAIN_TO_CHAIN_ID[transaction.target] !== chainId
+            isRedeeming ||
+            (!isStarknetChain(transaction.target as Chain) &&
+              CHAIN_TO_CHAIN_ID[transaction.target] !== chainId)
           }
           onClick={async () => await handleRedeem()}
         >

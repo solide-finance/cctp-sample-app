@@ -1,12 +1,19 @@
 import { useState } from 'react'
 
+import { useProvider } from '@starknet-react/core'
+
+import { DestinationDomain, isStarknetChain } from 'constants/chains'
 import { DEFAULT_API_DELAY, DEFAULT_BLOCKCHAIN_DELAY } from 'constants/index'
 import { TransactionStatus, useTransactionContext } from 'contexts/AppContext'
 import { useQueryParam } from 'hooks/useQueryParam'
 import useTransaction from 'hooks/useTransaction'
-import { AttestationStatus, getAttestation } from 'services/attestationService'
+import {
+  AttestationStatus,
+  getAttestationV2,
+} from 'services/attestationService'
 import { getMessageBytesFromEventLogs, getMessageHashFromBytes } from 'utils'
 
+import type { Chain } from 'constants/chains'
 import type { Transaction } from 'contexts/AppContext'
 import type { Bytes } from 'ethers'
 
@@ -17,9 +24,9 @@ interface HandleTransactionReceiptPollingParams {
 
 export function useTransactionPolling(handleComplete: () => void) {
   const { getTransactionReceipt } = useTransaction()
+  const { provider: starknetProvider } = useProvider()
   const { setTransaction } = useTransactionContext()
   const { txHash, transaction } = useQueryParam()
-  const [messageHash, setMessageHash] = useState(transaction?.messageHash)
   const [signature, setSignature] = useState(transaction?.signature)
 
   const handleTransactionReceiptPolling = (
@@ -77,7 +84,6 @@ export function useTransactionPolling(handleComplete: () => void) {
             messageHash,
           }
           setTransaction(txHash, newTransaction)
-          setMessageHash(messageHash)
 
           return handleAttestationPolling()
         }
@@ -105,19 +111,62 @@ export function useTransactionPolling(handleComplete: () => void) {
     }
   }
 
+  /**
+   * Poll Starknet transaction receipt for redeem completion
+   */
+  const handleStarknetRedeemTransactionReceiptPolling = () => {
+    if (transaction == null || starknetProvider == null) {
+      return
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const receipt = await starknetProvider.getTransactionReceipt(txHash)
+        // Starknet receipt status can be: 'PENDING', 'ACCEPTED_ON_L2', 'ACCEPTED_ON_L1', 'REJECTED'
+        const status = receipt.status
+        const finalityStatus = (receipt as { finality_status?: string })
+          .finality_status
+        if (
+          status === 'ACCEPTED_ON_L2' ||
+          status === 'ACCEPTED_ON_L1' ||
+          finalityStatus === 'ACCEPTED_ON_L2' ||
+          finalityStatus === 'ACCEPTED_ON_L1'
+        ) {
+          clearInterval(interval)
+
+          const newTransaction: Transaction = {
+            ...transaction,
+            status: TransactionStatus.COMPLETE,
+          }
+          setTransaction(txHash, newTransaction)
+
+          return handleComplete()
+        }
+      } catch (error) {
+        // Transaction might not be indexed yet, continue polling
+      }
+    }, DEFAULT_BLOCKCHAIN_DELAY)
+
+    return () => clearInterval(interval)
+  }
+
   const handleAttestationPolling = () => {
-    if (txHash && transaction && messageHash) {
-      // Polling transaction receipt until status = complete
+    if (txHash && transaction) {
+      // Always use CCTP v2 API since we use v2 contracts for all transfers
+      // v2 API is transaction hash-based and works with all chains
+      const sourceDomain = DestinationDomain[transaction.source as Chain]
+
       const interval = setInterval(async () => {
-        const attestation = await getAttestation(messageHash)
+        const attestation = await getAttestationV2(txHash, sourceDomain)
         if (attestation != null) {
-          const { status, message } = attestation
+          const { status, message, messageBytes } = attestation
 
           // Success
           if (status === AttestationStatus.complete && message !== null) {
             const newTransaction: Transaction = {
               ...transaction,
               signature: message,
+              messageBytes: messageBytes ?? transaction.messageBytes,
             }
             setTransaction(txHash, newTransaction)
             setSignature(message)
@@ -157,6 +206,10 @@ export function useTransactionPolling(handleComplete: () => void) {
       transaction &&
       transaction.status !== TransactionStatus.COMPLETE
     ) {
+      // Use Starknet-specific polling when destination is Starknet
+      if (isStarknetChain(transaction.target as Chain)) {
+        return handleStarknetRedeemTransactionReceiptPolling()
+      }
       return handleRedeemTransactionReceiptPolling()
     }
   }
